@@ -36,8 +36,10 @@ let totalTyped = "";
 let currentCharIndex = 0;
 let errors = 0;
 let longText = generateLongText();
+let timeLeft = 60;
+let timerInterval; 
+let typingStarted = false;
 
-textContainer.innerText = longText;
 
 // Shuffle the words array
 function shuffleArray(array) {
@@ -58,17 +60,49 @@ function generateLongText() {
     return shuffledWords.join(" ");
 }
 
+// Start countdown timer
+function startTimer() {
+    if (!typingStarted) {
+        typingStarted = true;
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = `Time left: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                endTest();
+            }
+        }, 1000);
+    }
+}
+
+// End the test and display final score
+function endTest() {
+    timerElement.textContent = `Time's up!`;
+    finalScoreElement.textContent = `Final WPM: ${calculateWPM()}`;
+    textContainer.style.display = 'none';
+    tryAgainButton.style.display = 'block';
+}
+
+// Calculate words per minute with error adjustment
+function calculateWPM() {
+    const wordsTyped = totalTyped.trim().split(/\s+/).length;
+    const baseWPM = Math.round((wordsTyped / 60) * 60);
+    const adjustedWPM = Math.max(baseWPM - errors, 0);
+    return adjustedWPM;
+}
+
 // Handle typing over the displayed text and scrolling
 document.addEventListener("keydown", (e) => {
+    startTimer();
 
     if (e.key === "Backspace") {
         if (totalTyped.length > 0) {
             currentCharIndex = Math.max(currentCharIndex - 1, 0); //won't go below 0
             totalTyped = totalTyped.slice(0, -1); //Removes one character from totalTyped
-        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-            totalTyped += e.key; 
-            currentCharIndex++;
-        }
+        } 
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        totalTyped += e.key; 
+        currentCharIndex++;
     }
 
     const textArray = longText.split("");
@@ -81,9 +115,9 @@ document.addEventListener("keydown", (e) => {
 
         if (i < totalTyped.length) {
             if (totalTyped[i] === textArray[i]) {
-                span.classList.add("correct");
+                span.classList.add('correct');
             } else {
-                span.classList.add("error");
+                span.classList.add('error');
                 errors++;
             }
         }
@@ -91,5 +125,54 @@ document.addEventListener("keydown", (e) => {
         span.textContent = textArray[i];
         textContainer.appendChild(span);
     }
+
+    // Scroll the container only after 20 characters
+    if (totalTyped.length >= 20) {
+        const scrollAmount = (totalTyped.length - 20) * 14;
+        textContainer.scrollLeft = scrollAmount;
+    }
 });
 
+// Reset the test
+function resetTest() {
+    clearInterval(timerInterval);
+    timeLeft = 60;
+    timerElement.textContent = `Time left: ${timeLeft}s`;
+    finalScoreElement.textContent = '';
+    textContainer.style.display = 'block';
+    tryAgainButton.style.display = 'none';
+    totalTyped = '';
+    typingStarted = false;
+    currentCharIndex = 0;
+    errors = 0;
+    textContainer.scrollLeft = 0;
+    longText = generateLongText();
+    init();
+    
+}
+
+// Initialize the test
+function init() {
+    if (isMobileDevice()) {
+        showMobileMessage();
+    } else {
+        textContainer.innerText = longText;
+    timerElement.textContent = `Time left: ${timeLeft}s`;
+    }
+}
+
+// Try again button listener
+tryAgainButton.addEventListener('click', resetTest);
+
+// Detect if the device is mobile
+function isMobileDevice() {
+    return /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth < 800;
+}
+
+// Show message for mobile users
+function showMobileMessage() {
+    textContainer.textContent = 'This typing test is designed for desktop use only';
+}
+
+// Startup
+init();
